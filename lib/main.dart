@@ -1,10 +1,50 @@
 import 'package:detect_fake_location/detect_fake_location.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:screen_protector/screen_protector.dart';
+import 'package:untitled1/firebase/FirebaseService.dart';
+import 'package:untitled1/firebase_options.dart';
+import 'package:untitled1/services/SecureData.dart';
+import 'package:untitled1/services/StorageSecure.dart';
+
+// Llave global para manejar la navegación y diálogos sin necesidad de context directo
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+Future<void> chargeData() async {
+
+  final Storagesecure _storage = Storagesecure();
+
+  final data = await _storage.getData();
+
+  if (data == null) {
+    await _storage.saveData(
+        SensitiveData(
+          Id: "1234",
+          accessToken: "1234",
+          refreshToken: "1234",
+          email: "1234",
+          password: "1234",
+        )
+    );
+
+    print('Información cargada');
+  }
+}
 
 void main() async {
+
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+
+  await Firebaseservice().initialize();
 
   // Bloquear capturas de pantalla
   await ScreenProtector.preventScreenshotOn();
@@ -18,6 +58,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // Asignar la llave aquí para permitir alertas globales
       debugShowCheckedModeBanner: false,
       title: 'Login Seguro',
       theme: ThemeData(
@@ -154,6 +195,14 @@ class _LoginPageState extends State<LoginPage> {
                         },
                         child: const Text('Ingresar'),
                       ),
+
+                      ElevatedButton(onPressed:() async {
+                       await chargeData();
+
+                       ScaffoldMessenger.of(context).showSnackBar(
+                         const SnackBar(content: Text('Datos inicializados')),
+                       );
+                      }, child: const Text('Cargar información'))
                     ],
                   ),
                 ),

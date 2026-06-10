@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "447659042482",
+    "project_id": "storage-dd25a",
+    "storage_bucket": "storage-dd25a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:447659042482:android:4472b9aedb03c03cabcbab",
+        "android_client_info": {
+          "package_name": "com.example.untitled1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKf-YmciVSYBdbe2YaqNjIl6ajVgIgniA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
