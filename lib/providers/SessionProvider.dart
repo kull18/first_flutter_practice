@@ -1,5 +1,5 @@
-// lib/providers/SessionProvider.dart
 import 'dart:async';
+import 'package:flutter/foundation.dart'; // Necesario para kDebugMode
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:untitled1/main.dart';
@@ -24,10 +24,19 @@ class SessionProvider extends ChangeNotifier {
   void resetTimer() {
     _timer?.cancel();
     _sessionExpired = false;
+    
+    // Si estamos en modo Debug, evitamos iniciar el temporizador que cierra la sesión
+    if (kDebugMode) {
+      return;
+    }
+
     _timer = Timer(const Duration(seconds: _timeoutSeconds), _onTimeout);
   }
 
   void _onTimeout() {
+    // Verificación adicional de seguridad
+    if (kDebugMode) return;
+
     _sessionExpired = true;
     notifyListeners();
     _navigateToLogin();
@@ -51,6 +60,7 @@ class SessionProvider extends ChangeNotifier {
         context: ctx,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           title: const Row(
             children: [
               Icon(Icons.lock_clock, color: Colors.red),

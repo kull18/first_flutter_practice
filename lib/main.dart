@@ -6,43 +6,29 @@ import 'package:geolocator/geolocator.dart';
 import 'package:screen_protector/screen_protector.dart';
 import 'package:untitled1/firebase/FirebaseService.dart';
 import 'package:untitled1/firebase_options.dart';
-import 'package:flutter/foundation.dart';
-import 'package:untitled1/providers/SessionProvider.dart';
 import 'package:untitled1/services/SecureData.dart';
 import 'package:untitled1/services/StorageSecure.dart';
-import 'package:provider/provider.dart';
+import 'package:untitled1/services/SecurityService.dart';
 
+// Llave global para manejar la navegación y diálogos sin necesidad de context directo
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
-
-class DebugModePage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Página de Debug"),
-      ),
-      body: Center(
-        child: Text("Está en modo debug")
-      ),
-    );
-  }
-}
 
 Future<void> chargeData() async {
   final Storagesecure _storage = Storagesecure();
+
   final data = await _storage.getData();
 
   if (data == null) {
     await _storage.saveData(
-      SensitiveData(
-        Id: "1234",
-        accessToken: "1234",
-        refreshToken: "1234",
-        email: "1234",
-        password: "1234",
-      ),
+        SensitiveData(
+          Id: "1234",
+          accessToken: "1234",
+          refreshToken: "1234",
+          email: "1234",
+          password: "1234",
+        )
     );
+
     print('Información cargada');
   }
 }
@@ -54,16 +40,17 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   await Firebaseservice().initialize();
+
+  // Bloquear capturas de pantalla
   await ScreenProtector.preventScreenshotOn();
 
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => SessionProvider(),
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
+
+  // Ejecutar el chequeo de seguridad de Frida al iniciar
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    SecurityService.checkSecurity();
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -71,35 +58,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-    final session = Provider.of<SessionProvider>(context, listen: false);
-
-    return Listener(
-      onPointerDown: (event) {
-        print('🟢 TAP detectado: ${event.position}');
-        session.resetTimer();
-      },
-      onPointerMove: (event) {
-        print('🔵 SCROLL/MOVE detectado: ${event.position}');
-        session.resetTimer();
-      },
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (notification) {
-          print('📜 ScrollNotification: ${notification.runtimeType}');
-          session.resetTimer();
-          return false;
-        },
-        child: MaterialApp(
-          navigatorKey: navigatorKey,
-          debugShowCheckedModeBanner: false,
-          title: 'Login Seguro',
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-            useMaterial3: true,
-          ),
-          home: const LoginPage(),
-        ),
+    return MaterialApp(
+      navigatorKey: navigatorKey, // Asignar la llave aquí para permitir alertas globales
+      debugShowCheckedModeBanner: false,
+      title: 'Login Seguro',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
       ),
+      home: const LoginPage(),
     );
   }
 }
@@ -121,10 +88,6 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _checkLocationFuture = _verificarPermisosYDetectar();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<SessionProvider>(context, listen: false).resetTimer();
-    });
   }
 
   Future<bool> _verificarPermisosYDetectar() async {
@@ -160,7 +123,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return kDebugMode ? DebugModePage() : Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: const Text('Pantalla de Login'),
         centerTitle: true,
@@ -233,17 +196,14 @@ class _LoginPageState extends State<LoginPage> {
                         },
                         child: const Text('Ingresar'),
                       ),
-                      ElevatedButton(
-                        onPressed: () async {
-                          await chargeData();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Datos inicializados'),
-                            ),
-                          );
-                        },
-                        child: const Text('Cargar información'),
-                      ),
+
+                      ElevatedButton(onPressed:() async {
+                       await chargeData();
+
+                       ScaffoldMessenger.of(context).showSnackBar(
+                         const SnackBar(content: Text('Datos inicializados')),
+                       );
+                      }, child: const Text('Cargar información'))
                     ],
                   ),
                 ),
@@ -256,7 +216,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// ── Widget de alerta de ubicación falsa ──────────────────────────────────────
+// ── Widget de alerta de ubicación falsa ───────────────────────────────────────
 
 class FakeLocationAlert extends StatefulWidget {
   const FakeLocationAlert({super.key});
@@ -311,6 +271,7 @@ class _FakeLocationAlertState extends State<FakeLocationAlert>
   @override
   Widget build(BuildContext context) {
     return Container(
+      // Fondo oscuro con gradiente rojo sutil
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -333,6 +294,7 @@ class _FakeLocationAlertState extends State<FakeLocationAlert>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Ícono con anillo pulsante
                     ScaleTransition(
                       scale: _pulseAnimation,
                       child: Container(
@@ -360,7 +322,10 @@ class _FakeLocationAlertState extends State<FakeLocationAlert>
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 36),
+
+                    // Etiqueta de código de error
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 4),
@@ -382,7 +347,10 @@ class _FakeLocationAlertState extends State<FakeLocationAlert>
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // Título principal
                     const Text(
                       'Acceso\nDenegado',
                       textAlign: TextAlign.center,
@@ -394,7 +362,10 @@ class _FakeLocationAlertState extends State<FakeLocationAlert>
                         letterSpacing: -1,
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // Divider decorativo
                     Row(
                       children: [
                         Expanded(
@@ -436,7 +407,10 @@ class _FakeLocationAlertState extends State<FakeLocationAlert>
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 20),
+
+                    // Descripción
                     const Text(
                       'Se detectó un servicio de ubicación simulada activo en tu dispositivo.',
                       textAlign: TextAlign.center,
@@ -447,7 +421,9 @@ class _FakeLocationAlertState extends State<FakeLocationAlert>
                         fontWeight: FontWeight.w400,
                       ),
                     ),
+
                     const SizedBox(height: 10),
+
                     const Text(
                       'Desactiva el GPS falso y vuelve a intentarlo para acceder a la aplicación.',
                       textAlign: TextAlign.center,
@@ -457,7 +433,10 @@ class _FakeLocationAlertState extends State<FakeLocationAlert>
                         height: 1.6,
                       ),
                     ),
+
                     const SizedBox(height: 36),
+
+                    // Paso a paso de solución
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -494,6 +473,8 @@ class _FakeLocationAlertState extends State<FakeLocationAlert>
     );
   }
 }
+
+// ── Widget auxiliar para cada paso ────────────────────────────────────────────
 
 class _StepRow extends StatelessWidget {
   final String number;
