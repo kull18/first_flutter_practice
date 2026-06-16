@@ -5,15 +5,71 @@ import 'package:flutter/services.dart';
 import '../main.dart';
 
 class SecurityService {
+  static const MethodChannel _adbChannel = MethodChannel('security/adb');
+
+  static Future<bool> _isAdbEnabled() async {
+    if (!Platform.isAndroid) return false;
+    try {
+      final bool enabled = await _adbChannel.invokeMethod('isAdbEnabled');
+      return enabled;
+    } catch (e) {
+      debugPrint("Error verificando ADB: $e");
+      return false;
+    }
+  }
+
+  static void _showAdbAlert() {
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF1A1A1A),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            title: const Row(
+              children: [
+                Icon(Icons.usb_off, color: Colors.red, size: 28),
+                SizedBox(width: 10),
+                Text('Depuración USB Detectada', style: TextStyle(color: Colors.white)),
+              ],
+            ),
+            content: const Text(
+              'Por motivos de seguridad, esta aplicación no puede ejecutarse '
+                  'mientras la Depuración USB esté activa en tu dispositivo.\n\n'
+                  'Para continuar, desactívala desde:\n'
+                  'Ajustes → Opciones de desarrollador → Depuración USB.',
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => SystemNavigator.pop(),
+                child: const Text(
+                  'CERRAR APLICACIÓN',
+                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
   /// Ejecuta todas las comprobaciones de seguridad
   static Future<void> checkSecurity() async {
-    // 1. Verificar si es Modo Debug
     if (kDebugMode) {
       _showDebugWarning();
-      // No retornamos para que también pueda detectar Frida si está presente
+    } else {
+      final bool adbEnabled = await _isAdbEnabled();
+      if (adbEnabled) {
+        _showAdbAlert();
+        return; // No seguimos evaluando si ya está bloqueado
+      }
     }
 
-    // 2. Verificar Frida
     bool isFridaRunning = await _detectFrida();
     if (isFridaRunning) {
       _showSecurityAlert("Frida Server");

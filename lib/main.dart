@@ -87,6 +87,9 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SecurityService.checkSecurity();
+    });
     _checkLocationFuture = _verificarPermisosYDetectar();
   }
 
@@ -215,8 +218,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-
-// ── Widget de alerta de ubicación falsa ───────────────────────────────────────
 
 class FakeLocationAlert extends StatefulWidget {
   const FakeLocationAlert({super.key});
@@ -473,8 +474,6 @@ class _FakeLocationAlertState extends State<FakeLocationAlert>
     );
   }
 }
-
-// ── Widget auxiliar para cada paso ────────────────────────────────────────────
 
 class _StepRow extends StatelessWidget {
   final String number;
